@@ -83,6 +83,8 @@ An AI-powered web application that generates professional, engaging LinkedIn con
 linkedin-post-generator/
 ├── api/
 │   └── index.py          # Serverless function (Flask app)
+├── templates/
+│   └── index.html        # UI template (used locally)
 ├── docs/                  # Screenshots
 ├── requirements.txt       # Python dependencies
 ├── vercel.json           # Vercel configuration
