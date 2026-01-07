@@ -5,7 +5,6 @@ import datetime
 try:
     import schedule
 except ImportError:
-    print("Warning: 'schedule' library not installed. Scheduling features will be disabled.")
     schedule = None
 import time
 import pytz
@@ -13,6 +12,11 @@ from templates import get_template
 from dotenv import load_dotenv
 
 load_dotenv()
+
+# Check for API key
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
+if not OPENROUTER_API_KEY:
+    print("Warning: OPENROUTER_API_KEY not found in environment variables")
 
 def generate_linkedin_post(topic, audience="professionals", goal="educate", tone="professional", length="150-200", keywords="", cta=""):
     system_prompt = """You are an expert LinkedIn content creator. Generate posts that are IMMEDIATELY COPY-PASTE READY for LinkedIn.
@@ -230,15 +234,18 @@ Output ONLY the slide content. No introductions or explanations."""
         return f"Error generating carousel: {str(e)}"
 
 def schedule_post(post, time_str, timezone="UTC"):
+    if schedule is None:
+        return "Scheduling feature is not available (schedule library not installed)"
+
     tz = pytz.timezone(timezone)
     now = datetime.datetime.now(tz)
     post_time = tz.localize(datetime.datetime.strptime(time_str, "%Y-%m-%d %H:%M"))
     if post_time > now:
         delay = (post_time - now).total_seconds()
         schedule.every(delay).seconds.do(lambda: print(f"Posting: {post}"))
-        print(f"Post scheduled for {time_str} in {timezone}.")
+        return f"Post scheduled for {time_str} in {timezone}."
     else:
-        print("Scheduled time is in the past.")
+        return "Scheduled time is in the past."
 
 def track_analytics(filename):
     # Mock analytics
