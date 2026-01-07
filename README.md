@@ -3,8 +3,12 @@
 An AI-powered web application that generates professional, engaging LinkedIn content. Create text posts, carousels, and use pre-built templates to streamline your content creation workflow.
 
 ![Python](https://img.shields.io/badge/Python-3.10+-blue.svg)
-![Flask](https://img.shields.io/badge/Flask-Web_App-green.svg)
+![Vercel](https://img.shields.io/badge/Deployed-Vercel-black.svg)
 ![Claude AI](https://img.shields.io/badge/AI-Claude_Sonnet-purple.svg)
+
+## Live Demo
+
+[View Live App](https://linkedin-post-generator.vercel.app) *(Update with your Vercel URL)*
 
 ## Features
 
@@ -29,80 +33,63 @@ An AI-powered web application that generates professional, engaging LinkedIn con
   <img src="docs/Mobile_3.png" alt="Mobile View 3" width="30%">
 </p>
 
-## Quick Start
+## Deploy Your Own
 
-### Prerequisites
+### Deploy to Vercel
 
-- Python 3.10 or higher
-- OpenRouter API key ([Get one here](https://openrouter.ai/))
+1. Fork this repository
+2. Import to [Vercel](https://vercel.com/new)
+3. Add environment variable:
+   - `OPENROUTER_API_KEY` = your OpenRouter API key
+4. Deploy!
 
-### Installation
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https://github.com/LEKKALAGANESH/LinkedIn_Post_Generator)
 
-1. **Clone or download the repository**
+### Run Locally
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/LEKKALAGANESH/LinkedIn_Post_Generator.git
+   cd LinkedIn_Post_Generator
+   ```
 
 2. **Install dependencies**
    ```bash
    pip install -r requirements.txt
    ```
 
-3. **Configure your API key**
-
-   Create a `.env` file in the project root:
-   ```
-   OPENROUTER_API_KEY=your_api_key_here
-   ```
-
-4. **Run the application**
+3. **Set environment variable**
    ```bash
-   python app.py
+   export OPENROUTER_API_KEY=your_api_key_here
    ```
 
-5. **Open your browser**
+4. **Run the app**
+   ```bash
+   cd api && python index.py
+   ```
 
-   Navigate to `http://localhost:5000`
+5. Open `http://localhost:5000`
 
 ## Usage
-
-### Web Interface
 
 1. Select your post type: **Text Post**, **Carousel**, or **Template**
 2. Enter your topic and customize options (audience, tone, goal, etc.)
 3. Click **Generate Post**
 4. Copy the generated content directly to LinkedIn
 
-### Command Line
-
-Run the generator directly from terminal for quick posts:
-
-```bash
-python linkedin_post_generator.py
-```
-
-Follow the prompts to:
-- Choose post type (text, carousel, template)
-- Enter your topic
-- Customize audience, tone, and other options
-- Generated posts are saved to the `outputs/` folder
-
 ## Project Structure
 
 ```
 linkedin-post-generator/
-├── app.py                    # Flask web server
-├── linkedin_post_generator.py # Core generation logic
-├── templates.py              # Post template definitions
-├── agentic_workflow.py       # Advanced multi-agent workflow (experimental)
-├── templates/
-│   └── index.html            # Web UI
-├── docs/                     # Screenshots
-├── outputs/                  # Generated posts (CLI mode)
-├── requirements.txt          # Python dependencies
-└── .env                      # API key configuration
+├── api/
+│   └── index.py          # Serverless function (Flask app)
+├── docs/                  # Screenshots
+├── requirements.txt       # Python dependencies
+├── vercel.json           # Vercel configuration
+└── README.md
 ```
 
 ## Configuration Options
-
-### Post Customization
 
 | Option | Description | Default |
 |--------|-------------|---------|
@@ -114,12 +101,14 @@ linkedin-post-generator/
 | Keywords | Comma-separated terms to include | - |
 | CTA | Call-to-action prompt | - |
 
-### Available Templates
+## Available Templates
 
-- **Personal Story** - Share a failure that became a lesson
-- **Mini List** - 5 quick tips with actionable takeaways
-- **Results Breakdown** - Share metrics and data-driven insights
-- **Hot Take** - Controversial opinion with reasoning
+| Template | Description |
+|----------|-------------|
+| Personal Story | Share a failure that became a lesson |
+| Mini List | 5 quick tips with actionable takeaways |
+| Results Breakdown | Share metrics and data-driven insights |
+| Hot Take | Controversial opinion with reasoning |
 
 ## API Endpoints
 
@@ -128,31 +117,25 @@ linkedin-post-generator/
 | `/` | GET | Web interface |
 | `/generate` | POST | Generate content |
 | `/templates` | GET | List available templates |
-| `/schedule` | POST | Schedule a post (experimental) |
-| `/analytics` | GET | View post analytics (mock data) |
 
 ## Tech Stack
 
-- **Backend**: Python, Flask
+- **Runtime**: Python 3.10+ on Vercel Serverless
+- **Framework**: Flask
 - **AI Model**: Claude Sonnet 4.5 (via OpenRouter)
 - **Frontend**: Vanilla HTML/CSS/JavaScript
-- **Additional Libraries**: python-dotenv, pytz, schedule
+- **Deployment**: Vercel
 
-## Advanced: Agentic Workflow
+## Environment Variables
 
-The `agentic_workflow.py` module provides an experimental multi-agent system using:
-
-- **LangGraph** - Stateful workflow orchestration
-- **CrewAI** - Multi-agent collaboration (Researcher, Writer, Analyst)
-- **PydanticAI** - Type-safe validation
-- **AutoGen** - Agent debate and consensus
-
-This is designed for more complex content generation pipelines with human-in-the-loop approval.
+| Variable | Description |
+|----------|-------------|
+| `OPENROUTER_API_KEY` | Your OpenRouter API key ([Get one here](https://openrouter.ai/)) |
 
 ## License
 
 This project is for personal and educational use.
 
-## Contributing
+## Author
 
-Contributions are welcome! Feel free to submit issues or pull requests.
+**Ganesh Lekkala** - [GitHub](https://github.com/LEKKALAGANESH)
