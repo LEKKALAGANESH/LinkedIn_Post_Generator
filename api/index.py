@@ -238,27 +238,8 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
     return response
 
-# Try to load external template file, fall back to embedded
-HTML_TEMPLATE = ''
-try:
-    import os
-    # Try multiple paths for different environments
-    possible_paths = [
-        os.path.join(os.path.dirname(os.path.dirname(__file__)), 'templates', 'index.html'),
-        os.path.join(os.path.dirname(__file__), '..', 'templates', 'index.html'),
-        'templates/index.html',
-    ]
-    for path in possible_paths:
-        if os.path.exists(path):
-            with open(path, 'r', encoding='utf-8') as f:
-                HTML_TEMPLATE = f.read()
-            break
-except:
-    pass
-
-# Fallback: embedded template for serverless environments
-if not HTML_TEMPLATE:
-    HTML_TEMPLATE = '''<!DOCTYPE html>
+# Embedded HTML Template
+HTML_TEMPLATE = '''<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
