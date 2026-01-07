@@ -1,0 +1,32 @@
+# Environment variables (contains API keys)
+.env
+
+# Python compiled files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environment
+venv/
+env/
+.venv/
+
+# IDE and editor settings
+.claude/
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Output files
+outputs/
+*.txt
+!Requirements.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
