@@ -1,9 +1,11 @@
 from flask import Flask, request, jsonify, Response
-from openai import OpenAI
+import requests
 import os
 import re
 
 app = Flask(__name__)
+
+OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
 
 # Templates
 templates = {
@@ -32,14 +34,30 @@ templates = {
 def get_template(name):
     return templates.get(name, None)
 
-def get_client():
+def call_openrouter(messages, max_tokens=600, temperature=0.7):
+    """Call OpenRouter API directly using requests"""
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
         raise ValueError("OPENROUTER_API_KEY environment variable not set")
-    return OpenAI(
-        base_url="https://openrouter.ai/api/v1",
-        api_key=api_key,
-    )
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://linkedin-post-generator.vercel.app",
+        "X-Title": "LinkedIn Post Generator"
+    }
+
+    data = {
+        "model": "anthropic/claude-sonnet-4",
+        "messages": messages,
+        "max_tokens": max_tokens,
+        "temperature": temperature
+    }
+
+    response = requests.post(OPENROUTER_API_URL, headers=headers, json=data)
+    response.raise_for_status()
+    result = response.json()
+    return result["choices"][0]["message"]["content"]
 
 def generate_linkedin_post(topic, audience="professionals", goal="educate", tone="professional", length="150-200", keywords="", cta=""):
     system_prompt = """You are an expert LinkedIn content creator. Generate posts that are IMMEDIATELY COPY-PASTE READY for LinkedIn.
@@ -78,21 +96,11 @@ Call-to-action: {cta}
 Remember: Output ONLY the ready-to-paste post content."""
 
     try:
-        client = get_client()
-        completion = client.chat.completions.create(
-            extra_headers={
-                "HTTP-Referer": "https://linkedin-post-generator.app",
-                "X-Title": "LinkedIn Post Generator",
-            },
-            model="anthropic/claude-sonnet-4.5",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            max_tokens=600,
-            temperature=0.7,
-        )
-        post = completion.choices[0].message.content
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        post = call_openrouter(messages, max_tokens=600, temperature=0.7)
         if post:
             post = post.strip()
             unwanted_prefixes = ["Here's", "Here is", "LinkedIn Post:", "Post:", "Draft:"]
@@ -122,17 +130,11 @@ Output ONLY the hooks, one per line. Nothing else."""
     user_prompt = f"Generate {num} scroll-stopping hooks for a LinkedIn post about: {topic}"
 
     try:
-        client = get_client()
-        completion = client.chat.completions.create(
-            model="anthropic/claude-sonnet-4.5",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            max_tokens=300,
-            temperature=0.8,
-        )
-        content = completion.choices[0].message.content
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        content = call_openrouter(messages, max_tokens=300, temperature=0.8)
         if content:
             hooks = content.strip().split('\n')
             cleaned_hooks = []
@@ -171,17 +173,11 @@ Output format: #hashtag1 #hashtag2 #hashtag3 #hashtag4 #hashtag5"""
     user_prompt = f"Generate 5-7 LinkedIn hashtags for a post about: {topic}"
 
     try:
-        client = get_client()
-        completion = client.chat.completions.create(
-            model="anthropic/claude-sonnet-4.5",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            max_tokens=100,
-            temperature=0.5,
-        )
-        content = completion.choices[0].message.content
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        content = call_openrouter(messages, max_tokens=100, temperature=0.5)
         if content:
             hashtags = re.findall(r'#\w+', content)
             cleaned = [h for h in hashtags if len(h) > 1][:7]
@@ -215,17 +211,11 @@ Output ONLY the slide content. No introductions or explanations."""
     user_prompt = f"Create a {slides}-slide LinkedIn carousel about: {topic}"
 
     try:
-        client = get_client()
-        completion = client.chat.completions.create(
-            model="anthropic/claude-sonnet-4.5",
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            max_tokens=800,
-            temperature=0.7,
-        )
-        content = completion.choices[0].message.content
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ]
+        content = call_openrouter(messages, max_tokens=800, temperature=0.7)
         return content.strip() if content else "Error generating carousel content."
     except Exception as e:
         return f"Error generating carousel: {str(e)}"
