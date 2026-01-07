@@ -42,7 +42,7 @@ An AI-powered web application that generates professional, engaging LinkedIn con
 
 2. **Install dependencies**
    ```bash
-   pip install -r Requirements.txt
+   pip install -r requirements.txt
    ```
 
 3. **Configure your API key**
@@ -96,7 +96,7 @@ linkedin-post-generator/
 │   └── index.html            # Web UI
 ├── docs/                     # Screenshots
 ├── outputs/                  # Generated posts (CLI mode)
-├── Requirements.txt          # Python dependencies
+├── requirements.txt          # Python dependencies
 └── .env                      # API key configuration
 ```
 
