@@ -238,22 +238,8 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
     return response
 
-# Full HTML Template - matching templates/index.html
-HTML_TEMPLATE = open('templates/index.html', 'r', encoding='utf-8').read() if __name__ != '__main__' else ''
-
-# Fallback template for serverless (embedded)
-try:
-    import os
-    template_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'templates', 'index.html')
-    if os.path.exists(template_path):
-        with open(template_path, 'r', encoding='utf-8') as f:
-            HTML_TEMPLATE = f.read()
-except:
-    pass
-
-# If template file not found, use embedded version
-if not HTML_TEMPLATE:
-    HTML_TEMPLATE = '''<!DOCTYPE html>
+# Full HTML Template (embedded)
+HTML_TEMPLATE = '''<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
