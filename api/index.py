@@ -47,17 +47,38 @@ def call_openrouter(messages, max_tokens=600, temperature=0.7):
         "X-Title": "LinkedIn Post Generator"
     }
 
-    data = {
-        "model": "anthropic/claude-sonnet-4",
-        "messages": messages,
-        "max_tokens": max_tokens,
-        "temperature": temperature
-    }
+    # Try models in order of preference (paid first, then free fallbacks)
+    models = [
+        "anthropic/claude-sonnet-4",
+        "google/gemini-2.0-flash-exp:free",
+        "meta-llama/llama-3.2-3b-instruct:free"
+    ]
 
-    response = requests.post(OPENROUTER_API_URL, headers=headers, json=data)
-    response.raise_for_status()
-    result = response.json()
-    return result["choices"][0]["message"]["content"]
+    last_error = None
+    for model in models:
+        data = {
+            "model": model,
+            "messages": messages,
+            "max_tokens": max_tokens,
+            "temperature": temperature
+        }
+
+        try:
+            response = requests.post(OPENROUTER_API_URL, headers=headers, json=data)
+            if response.status_code == 402:
+                # Payment required - try next model
+                last_error = "Credits exhausted"
+                continue
+            response.raise_for_status()
+            result = response.json()
+            return result["choices"][0]["message"]["content"]
+        except requests.exceptions.HTTPError as e:
+            if response.status_code == 402:
+                last_error = "Credits exhausted"
+                continue
+            raise e
+
+    raise ValueError(f"All models failed. {last_error}. Please add credits at openrouter.ai")
 
 def generate_linkedin_post(topic, audience="professionals", goal="educate", tone="professional", length="150-200", keywords="", cta=""):
     system_prompt = """You are an expert LinkedIn content creator. Generate posts that are IMMEDIATELY COPY-PASTE READY for LinkedIn.
