@@ -3,10 +3,18 @@ import requests
 import os
 import re
 import time
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 app = Flask(__name__)
 
-OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions"
+# API URL - configurable via environment variable
+# For OpenRouter: https://openrouter.ai/api/v1/chat/completions
+# For Gemini: https://generativelanguage.googleapis.com/v1beta/openai/chat/completions
+# For apirouter.ai: check their documentation for the correct endpoint
+API_BASE_URL = os.getenv("API_BASE_URL", "https://openrouter.ai/api/v1/chat/completions")
 
 # Templates
 templates = {
@@ -35,25 +43,38 @@ templates = {
 def get_template(name):
     return templates.get(name, None)
 
-def call_openrouter(messages, max_tokens=600, temperature=0.7, max_retries=5):
-    """Call OpenRouter API directly using requests with retry logic for rate limits"""
+def call_api(messages, max_tokens=600, temperature=0.7, max_retries=5):
+    """Call LLM API with retry logic for rate limits. Supports OpenRouter, Gemini, etc."""
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
         raise ValueError("OPENROUTER_API_KEY environment variable not set")
 
+    api_url = API_BASE_URL
+
+    # Base headers (work with all OpenAI-compatible APIs)
     headers = {
         "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://linkedin-post-generator.vercel.app",
-        "X-Title": "LinkedIn Post Generator"
     }
 
-    # Try models in order of preference (paid first, then free fallbacks)
-    models = [
-        "anthropic/claude-sonnet-4",
-        "google/gemini-2.0-flash-exp:free",
-        "meta-llama/llama-3.2-3b-instruct:free"
-    ]
+    # Add OpenRouter-specific headers only if using OpenRouter
+    if "openrouter.ai" in api_url:
+        headers["HTTP-Referer"] = "https://linkedin-post-generator.vercel.app"
+        headers["X-Title"] = "LinkedIn Post Generator"
+
+    # Try models in order of preference - configurable via environment variable
+    # For OpenRouter: anthropic/claude-sonnet-4,google/gemini-2.0-flash-exp:free
+    # For Gemini: gemini-2.0-flash,gemini-1.5-flash
+    models_env = os.getenv("API_MODELS", "")
+    if models_env:
+        models = [m.strip() for m in models_env.split(",") if m.strip()]
+    else:
+        # Default to OpenRouter models
+        models = [
+            "anthropic/claude-sonnet-4",
+            "google/gemini-2.0-flash-exp:free",
+            "meta-llama/llama-3.2-3b-instruct:free"
+        ]
 
     last_error = None
     for model in models:
@@ -67,7 +88,7 @@ def call_openrouter(messages, max_tokens=600, temperature=0.7, max_retries=5):
         # Retry logic with exponential backoff for rate limits
         for attempt in range(max_retries):
             try:
-                response = requests.post(OPENROUTER_API_URL, headers=headers, json=data)
+                response = requests.post(api_url, headers=headers, json=data)
 
                 # Handle rate limiting with exponential backoff
                 if response.status_code == 429:
@@ -92,12 +113,25 @@ def call_openrouter(messages, max_tokens=600, temperature=0.7, max_retries=5):
                     last_error = "Credits exhausted"
                     break
 
+                # Check for other errors
+                if response.status_code >= 400:
+                    error_detail = ""
+                    try:
+                        error_json = response.json()
+                        error_detail = error_json.get("error", {}).get("message", str(error_json))
+                    except:
+                        error_detail = response.text[:200]
+                    last_error = f"API error {response.status_code}: {error_detail}"
+                    print(f"[API ERROR] Model: {model}, Status: {response.status_code}, Response: {error_detail}")
+                    break
+
                 response.raise_for_status()
                 result = response.json()
                 return result["choices"][0]["message"]["content"]
 
             except requests.exceptions.RequestException as e:
                 # Network error, timeout, etc. - retry with backoff
+                print(f"[NETWORK ERROR] Model: {model}, Error: {str(e)}")
                 if attempt < max_retries - 1:
                     wait_time = (2 ** attempt)
                     time.sleep(wait_time)
@@ -110,7 +144,7 @@ def call_openrouter(messages, max_tokens=600, temperature=0.7, max_retries=5):
         if last_error != "Credits exhausted" and last_error != "Rate limit exceeded":
             continue
 
-    raise ValueError(f"All models failed. {last_error}. Please try again or add credits at openrouter.ai")
+    raise ValueError(f"All models failed. {last_error}. Please check your API key and credits.")
 
 def generate_linkedin_post(topic, audience="professionals", goal="educate", tone="professional", length="150-200", keywords="", cta=""):
     system_prompt = """You are an expert LinkedIn content creator. Generate posts that are IMMEDIATELY COPY-PASTE READY for LinkedIn.
@@ -153,7 +187,7 @@ Remember: Output ONLY the ready-to-paste post content."""
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
-        post = call_openrouter(messages, max_tokens=600, temperature=0.7)
+        post = call_api(messages, max_tokens=600, temperature=0.7)
         if post:
             post = post.strip()
             unwanted_prefixes = ["Here's", "Here is", "LinkedIn Post:", "Post:", "Draft:"]
@@ -187,7 +221,7 @@ Output ONLY the hooks, one per line. Nothing else."""
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
-        content = call_openrouter(messages, max_tokens=300, temperature=0.8)
+        content = call_api(messages, max_tokens=1300, temperature=0.8)
         if content:
             hooks = content.strip().split('\n')
             cleaned_hooks = []
@@ -230,7 +264,7 @@ Output format: #hashtag1 #hashtag2 #hashtag3 #hashtag4 #hashtag5"""
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
-        content = call_openrouter(messages, max_tokens=100, temperature=0.5)
+        content = call_api(messages, max_tokens=100, temperature=0.5)
         if content:
             hashtags = re.findall(r'#\w+', content)
             cleaned = [h for h in hashtags if len(h) > 1][:7]
@@ -268,7 +302,7 @@ Output ONLY the slide content. No introductions or explanations."""
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": user_prompt},
         ]
-        content = call_openrouter(messages, max_tokens=800, temperature=0.7)
+        content = call_api(messages, max_tokens=800, temperature=0.7)
         return content.strip() if content else "Error generating carousel content."
     except Exception as e:
         return f"Error generating carousel: {str(e)}"
