@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, Response
 import requests
 import os
 import re
+import time
 
 app = Flask(__name__)
 
@@ -34,8 +35,8 @@ templates = {
 def get_template(name):
     return templates.get(name, None)
 
-def call_openrouter(messages, max_tokens=600, temperature=0.7):
-    """Call OpenRouter API directly using requests"""
+def call_openrouter(messages, max_tokens=600, temperature=0.7, max_retries=5):
+    """Call OpenRouter API directly using requests with retry logic for rate limits"""
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
         raise ValueError("OPENROUTER_API_KEY environment variable not set")
@@ -63,22 +64,53 @@ def call_openrouter(messages, max_tokens=600, temperature=0.7):
             "temperature": temperature
         }
 
-        try:
-            response = requests.post(OPENROUTER_API_URL, headers=headers, json=data)
-            if response.status_code == 402:
-                # Payment required - try next model
-                last_error = "Credits exhausted"
-                continue
-            response.raise_for_status()
-            result = response.json()
-            return result["choices"][0]["message"]["content"]
-        except requests.exceptions.HTTPError as e:
-            if response.status_code == 402:
-                last_error = "Credits exhausted"
-                continue
-            raise e
+        # Retry logic with exponential backoff for rate limits
+        for attempt in range(max_retries):
+            try:
+                response = requests.post(OPENROUTER_API_URL, headers=headers, json=data)
 
-    raise ValueError(f"All models failed. {last_error}. Please add credits at openrouter.ai")
+                # Handle rate limiting with exponential backoff
+                if response.status_code == 429:
+                    if attempt < max_retries - 1:
+                        # Exponential backoff: 1s, 2s, 4s, 8s, 16s
+                        wait_time = (2 ** attempt)
+                        # Check for Retry-After header
+                        retry_after = response.headers.get('Retry-After')
+                        if retry_after:
+                            try:
+                                wait_time = max(wait_time, int(retry_after))
+                            except ValueError:
+                                pass
+                        time.sleep(wait_time)
+                        continue
+                    else:
+                        last_error = "Rate limit exceeded - please try again in a moment"
+                        break
+
+                if response.status_code == 402:
+                    # Payment required - try next model
+                    last_error = "Credits exhausted"
+                    break
+
+                response.raise_for_status()
+                result = response.json()
+                return result["choices"][0]["message"]["content"]
+
+            except requests.exceptions.RequestException as e:
+                # Network error, timeout, etc. - retry with backoff
+                if attempt < max_retries - 1:
+                    wait_time = (2 ** attempt)
+                    time.sleep(wait_time)
+                    continue
+                last_error = f"Request failed: {str(e)}"
+                break
+
+        # If we got a successful response, we would have returned already
+        # If we're here, try the next model
+        if last_error != "Credits exhausted" and last_error != "Rate limit exceeded":
+            continue
+
+    raise ValueError(f"All models failed. {last_error}. Please try again or add credits at openrouter.ai")
 
 def generate_linkedin_post(topic, audience="professionals", goal="educate", tone="professional", length="150-200", keywords="", cta=""):
     system_prompt = """You are an expert LinkedIn content creator. Generate posts that are IMMEDIATELY COPY-PASTE READY for LinkedIn.
